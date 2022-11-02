@@ -15,6 +15,7 @@ void* mpd_thread(void* mpd_conn) {
     struct mpd_song* song = NULL;
     while (mpd_send_idle(mpd) && !error) {
         enum mpd_idle event = mpd_recv_idle(mpd, 1);
+        (void)event; //nullify 
 
         status = mpd_run_status(mpd);
         if (status == NULL) {

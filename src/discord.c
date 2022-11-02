@@ -35,8 +35,8 @@ int mpdrpd_discord_update(struct mpd_status* status, struct mpd_song* song, enum
         unsigned int queue_length = mpd_status_get_queue_length(status);
         unsigned int song_index = mpd_status_get_song_pos(status);
         
-        char* song_title = mpd_song_get_tag(song, MPD_TAG_TITLE, 0);
-        char* song_artist = mpd_song_get_tag(song, MPD_TAG_ARTIST, 0);
+        const char* song_title = mpd_song_get_tag(song, MPD_TAG_TITLE, 0);
+        const char* song_artist = mpd_song_get_tag(song, MPD_TAG_ARTIST, 0);
 
         if (song_title == NULL || song_artist == NULL) {
             ellipse_copy(song_details, mpd_song_get_uri(song), 128);
