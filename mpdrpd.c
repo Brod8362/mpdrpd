@@ -2,9 +2,47 @@
 #include <stdlib.h>
 
 #include "discord.h"
+#include <pthread.h>
 
 #include <mpd/client.h>
 #include <mpd/connection.h>
+
+void* mpd_thread(void* mpd_conn) {
+    struct mpd_connection* mpd = (struct mpd_connection*)mpd_conn;
+
+    int error = 0;
+    struct mpd_status* status = NULL;
+    struct mpd_song* song = NULL;
+    while (mpd_send_idle(mpd) && !error) {
+        enum mpd_idle event = mpd_recv_idle(mpd, 1);
+
+        status = mpd_run_status(mpd);
+        if (status == NULL) {
+            error = 1;
+            return NULL;
+        }
+        song = mpd_run_current_song(mpd);
+        if (song == NULL) {
+            error = 1;
+            mpd_status_free(status);
+            return NULL;
+        }
+        enum mpd_state state = mpd_status_get_state(status);
+
+        int update_errcode = mpdrpd_discord_update(status, song, state);
+        if (update_errcode != 0) {
+            printf("[mpdrpd] error when updating discord: %d\n", update_errcode);
+            error = 2;
+        }
+        
+        //cleanup allocated memory
+        mpd_status_free(status);
+        status = NULL;
+        mpd_song_free(song);
+        song = NULL;
+    }
+    return NULL;
+}
 
 int main(int argc, char** argv) {
     if (argc != 3) {
@@ -20,45 +58,23 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    mpdrpd_discord_init();
+    DiscordEventHandlers handlers = {
+        .disconnected = handle_discord_disconnected,
+        .errored = handle_discord_error,
+        .joinGame = handle_discord_join,
+        .joinRequest = handle_discord_join_request,
+        .ready = handle_discord_ready,
+        .spectateGame = handle_discord_spectate
+    };
 
-    //TODO: is this okay?
-    int error = 0;
-    struct mpd_status* status = NULL;
-    struct mpd_song* song = NULL;
-    while (mpd_send_idle(mpd) && !error) {
-        enum mpd_idle event = mpd_recv_idle(mpd, 1);
-        switch (event) {
-            case MPD_IDLE_PLAYER:
-                status = mpd_run_status(mpd);
-                if (status == NULL) {
-                    error = 1;
-                    break;
-                }
-                song = mpd_run_current_song(mpd);
-                if (song == NULL) {
-                    error = 1;
-                    mpd_status_free(status);
-                    break;
-                }
-                enum mpd_state state = mpd_status_get_state(status);
+    Discord_Initialize(MPDRPD_APPLICATION_ID, &handlers, 1, NULL);
+    printf("[discord] initialized\n");
 
-                int update_errcode = mpdrpd_discord_update(status, song, state);
-                if (update_errcode != 0) {
-                    printf("[mpdrpd] error when updating discord: %d\n", update_errcode);
-                }
-                
-                //cleanup allocated memory
-                mpd_status_free(status);
-                status = NULL;
-                mpd_song_free(song);
-                song = NULL;
-                break;
-            default:
-                break;
-        }
-    }
+    pthread_t mpd_thr;
+    pthread_create(&mpd_thr, NULL, mpd_thread, (void*)mpd);
+    pthread_join(mpd_thr, NULL);
 
+    Discord_Shutdown();
     mpd_connection_free(mpd);
     return 0;
 }  

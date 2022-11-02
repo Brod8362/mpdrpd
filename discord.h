@@ -5,7 +5,7 @@
 #include <mpd/status.h>
 #include <mpd/song.h>
 
-void mpdrpd_discord_init();
+#define MPDRPD_APPLICATION_ID "514608595028148234"
 
 int mpdrpd_discord_update(struct mpd_status* status, struct mpd_song* song, enum mpd_state state);
 

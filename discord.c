@@ -2,21 +2,7 @@
 #include "lookups.h"
 
 #include <stdio.h>
-
-const char* MPDRPD_APPLICATION_ID = "514608595028148234";
-
-void mpdrpd_discord_init() {
-    DiscordEventHandlers handlers = {
-        .disconnected = handle_discord_disconnected,
-        .errored = handle_discord_error,
-        .joinGame = handle_discord_join,
-        .joinRequest = handle_discord_join_request,
-        .ready = handle_discord_ready,
-        .spectateGame = handle_discord_spectate
-    };
-    Discord_Initialize(MPDRPD_APPLICATION_ID, &handlers, 1, NULL);
-    printf("[discord] initialized\n");
-}
+#include <string.h>
 
 int mpdrpd_discord_update(struct mpd_status* status, struct mpd_song* song, enum mpd_state state) {
     DiscordRichPresence rp;
@@ -24,6 +10,7 @@ int mpdrpd_discord_update(struct mpd_status* status, struct mpd_song* song, enum
     if (state == MPD_STATE_STOP || state == MPD_STATE_UNKNOWN) {
         Discord_ClearPresence();
     } else {
+        memset(&rp, 0, sizeof(rp));
         time_t epoch = time(NULL);
         unsigned int elapsed = mpd_status_get_elapsed_time(status);
         unsigned int duration = mpd_song_get_duration(song);
@@ -39,13 +26,16 @@ int mpdrpd_discord_update(struct mpd_status* status, struct mpd_song* song, enum
         rp.details = "Song Title - Song Artist";
         rp.startTimestamp = epoch_started;
         rp.endTimestamp = epoch_will_end;
-        rp.largeImageText = "placeholder";
-        rp.smallImageText = state_str.small_image_key;
+        rp.largeImageKey = "placeholder";
+        rp.largeImageText = "Song Title - Song Artist";
+        rp.smallImageKey= state_str.small_image_key;
+        rp.smallImageText = state_str.state_string;
         rp.partySize = song_index+1;
         rp.partyMax = queue_length;
         rp.state = state_str.state_string;
 
         Discord_UpdatePresence(&rp);
+        printf("[discord] updated\n");
     }
 
     return 0;
