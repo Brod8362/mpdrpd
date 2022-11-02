@@ -4,8 +4,20 @@
 #include <stdio.h>
 #include <string.h>
 
+void ellipse_copy(char* dest, const char* src, size_t output_size) {
+    if (strlen(src) >= output_size) {
+        memcpy(dest, src, output_size-4);
+        strncpy(dest+output_size-4, "...", 4);
+    } else {
+        strncpy(dest, src, output_size);
+    }
+}
+
 int mpdrpd_discord_update(struct mpd_status* status, struct mpd_song* song, enum mpd_state state) {
     DiscordRichPresence rp;
+    char song_details[128];
+    char song_final[62];
+    char artist_final[62];
 
     if (state == MPD_STATE_STOP || state == MPD_STATE_UNKNOWN) {
         Discord_ClearPresence();
@@ -23,10 +35,20 @@ int mpdrpd_discord_update(struct mpd_status* status, struct mpd_song* song, enum
         unsigned int queue_length = mpd_status_get_queue_length(status);
         unsigned int song_index = mpd_status_get_song_pos(status);
         
-        rp.details = "Song Title - Song Artist";
-        
+        char* song_title = mpd_song_get_tag(song, MPD_TAG_TITLE, 0);
+        char* song_artist = mpd_song_get_tag(song, MPD_TAG_ARTIST, 0);
+
+        if (song_title == NULL || song_artist == NULL) {
+            ellipse_copy(song_details, mpd_song_get_uri(song), 128);
+        } else {
+            ellipse_copy(song_final, song_title, 62);
+            ellipse_copy(artist_final, song_artist, 62);
+            snprintf(song_details, 128, "%s - %s", song_final, artist_final);
+        }
+
+        rp.details = song_details;
         rp.largeImageKey = "placeholder";
-        rp.largeImageText = "Song Title - Song Artist";
+        rp.largeImageText = "using mpdrpd";
         rp.smallImageKey= state_str.small_image_key;
         rp.smallImageText = state_str.state_string;
         if (state == MPD_STATE_PLAY) {
@@ -41,7 +63,6 @@ int mpdrpd_discord_update(struct mpd_status* status, struct mpd_song* song, enum
         rp.state = state_str.state_string;
 
         Discord_UpdatePresence(&rp);
-        printf("[discord] updated\n");
     }
 
     return 0;
