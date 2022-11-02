@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #include "discord.h"
+#include "configuration.h"
 #include <pthread.h>
 
 #include <mpd/client.h>
@@ -10,12 +12,17 @@
 void* mpd_thread(void* mpd_conn) {
     struct mpd_connection* mpd = (struct mpd_connection*)mpd_conn;
 
+    uint32_t mpdrpd_flags = 1;
+    // mpdrpd_flags |= MPDRPD_HIDE_PAUSED;
+
     int error = 0;
     struct mpd_status* status = NULL;
     struct mpd_song* song = NULL;
     while (mpd_send_idle(mpd) && !error) {
         enum mpd_idle event = mpd_recv_idle(mpd, 1);
-        (void)event; //nullify 
+        
+        if (event != MPD_IDLE_PLAYER) 
+            continue;
 
         status = mpd_run_status(mpd);
         if (status == NULL) {
@@ -30,7 +37,7 @@ void* mpd_thread(void* mpd_conn) {
         }
         enum mpd_state state = mpd_status_get_state(status);
 
-        int update_errcode = mpdrpd_discord_update(status, song, state);
+        int update_errcode = mpdrpd_discord_update(status, song, state, mpdrpd_flags);
         if (update_errcode != 0) {
             printf("[mpdrpd] error when updating discord: %d\n", update_errcode);
             error = 2;

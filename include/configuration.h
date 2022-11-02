@@ -1,0 +1,6 @@
+#ifndef MPDRPD_CONFIG_H
+#define MPDRPD_CONFIG_H
+
+#define MPDRPD_HIDE_PAUSED 1
+
+#endif

@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "configuration.h"
 
 void ellipse_copy(char* dest, const char* src, size_t output_size) {
     if (strlen(src) >= output_size) {
@@ -13,13 +14,15 @@ void ellipse_copy(char* dest, const char* src, size_t output_size) {
     }
 }
 
-int mpdrpd_discord_update(struct mpd_status* status, struct mpd_song* song, enum mpd_state state) {
+int mpdrpd_discord_update(struct mpd_status* status, struct mpd_song* song, enum mpd_state state, const uint32_t flags) {
     DiscordRichPresence rp;
     char song_details[128];
     char song_final[62];
     char artist_final[62];
-
+    
     if (state == MPD_STATE_STOP || state == MPD_STATE_UNKNOWN) {
+        Discord_ClearPresence();
+    } else if (state == MPD_STATE_PAUSE && (flags & MPDRPD_HIDE_PAUSED) == 1) {
         Discord_ClearPresence();
     } else {
         memset(&rp, 0, sizeof(rp));
