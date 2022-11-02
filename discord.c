@@ -32,12 +32,17 @@ int mpdrpd_discord_update(struct mpd_status* status, struct mpd_song* song, enum
         unsigned long epoch_will_end = epoch_started+duration;
 
         struct state_strings state_str = state_lookup_table[state];
+
+        unsigned int queue_length = mpd_status_get_queue_length(status);
+        unsigned int song_index = mpd_status_get_song_pos(status);
         
         rp.details = "Song Title - Song Artist";
         rp.startTimestamp = epoch_started;
         rp.endTimestamp = epoch_will_end;
         rp.largeImageText = "placeholder";
         rp.smallImageText = state_str.small_image_key;
+        rp.partySize = song_index+1;
+        rp.partyMax = queue_length;
         rp.state = state_str.state_string;
 
         Discord_UpdatePresence(&rp);
@@ -58,8 +63,15 @@ void handle_discord_error(int errcode, const char* message) {
     printf("[discord] error (%d) %s\n", errcode, message);
 }
 
-void handle_discord_join(const char* secret) {}
+void handle_discord_join(const char* _secret) {
+    //to suppress "unused parameter" warnings from gcc
+    (void)_secret;
+}
 
-void handle_discord_spectate(const char* secret) {}
+void handle_discord_spectate(const char* _secret) {
+    (void)_secret;
+}
 
-void handle_discord_join_request(const DiscordUser* request) {}
+void handle_discord_join_request(const DiscordUser* _request) {
+    (void)_request;
+}
