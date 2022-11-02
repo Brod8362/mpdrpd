@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-g3 -Wall -Wextra -Wpedantic
-LIBS=-lmpdclient
+LIBS=-lmpdclient -ldiscord-rpc
 
-libmpd_test: test.c
+mpdrpd: mpdrpd.c discord.c
 	$(CC) $(CFLAGS) $(LIBS) -o $@ $^

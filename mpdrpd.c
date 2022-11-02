@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "lookups.h"
+#include "discord.h"
 
 #include <mpd/client.h>
 #include <mpd/connection.h>

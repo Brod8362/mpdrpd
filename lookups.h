@@ -1,5 +1,5 @@
-#ifndef LOOKUPS_H
-#define LOOKUPS_H
+#ifndef MPDRPD_LOOKUPS_H
+#define MPDRPD_LOOKUPS_H
 
 struct state_strings {
     const char* state_string;
