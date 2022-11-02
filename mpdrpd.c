@@ -24,16 +24,18 @@ int main(int argc, char** argv) {
 
     //TODO: is this okay?
     int error = 0;
+    struct mpd_status* status = NULL;
+    struct mpd_song* song = NULL;
     while (mpd_send_idle(mpd) && !error) {
         enum mpd_idle event = mpd_recv_idle(mpd, 1);
         switch (event) {
             case MPD_IDLE_PLAYER:
-                struct mpd_status* status = mpd_run_status(mpd);
+                status = mpd_run_status(mpd);
                 if (status == NULL) {
                     error = 1;
                     break;
                 }
-                struct mpd_song* song = mpd_run_current_song(mpd);
+                song = mpd_run_current_song(mpd);
                 if (song == NULL) {
                     error = 1;
                     mpd_status_free(status);
@@ -41,11 +43,16 @@ int main(int argc, char** argv) {
                 }
                 enum mpd_state state = mpd_status_get_state(status);
 
-                mpdrpd_discord_update(status, song, state);
+                int update_errcode = mpdrpd_discord_update(status, song, state);
+                if (update_errcode != 0) {
+                    printf("[mpdrpd] error when updating discord: %d\n", update_errcode);
+                }
                 
                 //cleanup allocated memory
                 mpd_status_free(status);
+                status = NULL;
                 mpd_song_free(song);
+                song = NULL;
                 break;
             default:
                 break;
