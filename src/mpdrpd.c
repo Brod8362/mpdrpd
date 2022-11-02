@@ -9,11 +9,18 @@
 #include <mpd/client.h>
 #include <mpd/connection.h>
 
-void* mpd_thread(void* mpd_conn) {
-    struct mpd_connection* mpd = (struct mpd_connection*)mpd_conn;
+#include <getopt.h>
 
-    uint32_t mpdrpd_flags = 1;
-    // mpdrpd_flags |= MPDRPD_HIDE_PAUSED;
+struct thread_arg {
+    struct mpd_connection* mpd;
+    const uint32_t flags;
+};
+
+void* mpd_thread(void* arg_raw) {
+    struct thread_arg* arg = (struct thread_arg*)arg_raw;
+
+    struct mpd_connection* mpd = arg->mpd;
+    const uint32_t mpdrpd_flags = arg->flags;
 
     int error = 0;
     struct mpd_status* status = NULL;
@@ -53,13 +60,35 @@ void* mpd_thread(void* mpd_conn) {
 }
 
 int main(int argc, char** argv) {
-    if (argc != 3) {
-        fprintf(stderr, "usage: %s [hostname] [port]\n", argv[0]);
-        return 1;
-    }
-    int port = atoi(argv[2]);
+    uint32_t mpdrpd_flags = 0;
+    char* host = "127.0.0.1";
+    int port = 6600;
 
-    struct mpd_connection* mpd = mpd_connection_new(argv[1], port, 5000);
+    char opt;
+    while ((opt = getopt(argc, argv, "sSp:h:")) != -1) {
+        switch (opt) {
+            case 'p': //port
+                port = atoi(optarg);
+                break;
+            case 'h': //host
+                host = optarg;
+                break;
+            case 's':
+                mpdrpd_flags |= MPDRPD_HIDE_PAUSED;
+                break;
+            case 'S':
+                mpdrpd_flags ^= MPDRPD_HIDE_PAUSED;
+                break;
+            case '?':
+                printf("huh??\n");
+                break;
+            default:
+                abort();
+        }
+    }
+
+    printf("connecting to mpd @ %s:%d\n", host, port);
+    struct mpd_connection* mpd = mpd_connection_new(host, port, 5000);
 
     if (mpd == NULL) {
         fprintf(stderr, "failed to connect to mpd\n");
@@ -78,8 +107,13 @@ int main(int argc, char** argv) {
     Discord_Initialize(MPDRPD_APPLICATION_ID, &handlers, 1, NULL);
     printf("[discord] initialized\n");
 
+    struct thread_arg ta = {
+        .mpd = mpd,
+        .flags = mpdrpd_flags
+    };
+
     pthread_t mpd_thr;
-    pthread_create(&mpd_thr, NULL, mpd_thread, (void*)mpd);
+    pthread_create(&mpd_thr, NULL, mpd_thread, (void*)&ta);
     pthread_join(mpd_thr, NULL);
 
     Discord_Shutdown();
