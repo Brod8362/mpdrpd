@@ -24,12 +24,18 @@ int mpdrpd_discord_update(struct mpd_status* status, struct mpd_song* song, enum
         unsigned int song_index = mpd_status_get_song_pos(status);
         
         rp.details = "Song Title - Song Artist";
-        rp.startTimestamp = epoch_started;
-        rp.endTimestamp = epoch_will_end;
+        
         rp.largeImageKey = "placeholder";
         rp.largeImageText = "Song Title - Song Artist";
         rp.smallImageKey= state_str.small_image_key;
         rp.smallImageText = state_str.state_string;
+        if (state == MPD_STATE_PLAY) {
+            rp.startTimestamp = epoch_started;
+            rp.endTimestamp = epoch_will_end;
+        } else if (state == MPD_STATE_PAUSE) {
+            rp.endTimestamp = 0;
+            rp.startTimestamp = 0;
+        }
         rp.partySize = song_index+1;
         rp.partyMax = queue_length;
         rp.state = state_str.state_string;
