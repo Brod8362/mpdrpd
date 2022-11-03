@@ -1,5 +1,6 @@
 #include "discord.h"
 #include "lookups.h"
+#include "log.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -73,15 +74,20 @@ int mpdrpd_discord_update(struct mpd_status* status, struct mpd_song* song, enum
 }
 
 void handle_discord_ready(const DiscordUser* connected_user) {
-    printf("[discord] connected (%s#%s)\n", connected_user->username, connected_user->discriminator);
+    (void)connected_user;
+    mpdrpd_log(LOG_LEVEL_INFO, "discord connected");
 }
 
 void handle_discord_disconnected(int errcode, const char* message) {
-    printf("[discord] disconnected (%d) %s", errcode, message);
+    (void)errcode;
+    (void)message;
+    mpdrpd_log(LOG_LEVEL_INFO, "discord disconnected");
 }
 
 void handle_discord_error(int errcode, const char* message) {
-    printf("[discord] error (%d) %s\n", errcode, message);
+    (void)errcode;
+    (void)message;
+    mpdrpd_log(LOG_LEVEL_INFO, "discord error");
 }
 
 void handle_discord_join(const char* _secret) {
