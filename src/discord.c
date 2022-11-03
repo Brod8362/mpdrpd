@@ -48,7 +48,7 @@ int mpdrpd_discord_update(struct mpd_status* status, struct mpd_song* song, enum
         } else {
             ellipse_copy(song_final, song_title, 62);
             ellipse_copy(artist_final, song_artist, 62);
-            snprintf(song_details, 128, "%s - %s", song_final, artist_final);
+            snprintf(song_details, 128, "%s - %s", artist_final, song_final);
         }
 
         rp.details = song_details;
