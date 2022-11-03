@@ -67,6 +67,13 @@ void* mpd_thread(void* arg_raw) {
 
 int main(int argc, char** argv) {
     uint32_t mpdrpd_flags = 0;
+
+	for (size_t i = 0; i < config_file_path_size; i++) {
+		const char* file_path = config_file_paths[i];
+		printf("%s\n", file_path);
+		mpdrpd_log(LOG_LEVEL_DEBUG, "trying config file...");
+	}
+
     char* host = "127.0.0.1";
     int port = 6600;
 
