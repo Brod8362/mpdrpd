@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
                 mpdrpd_flags |= MPDRPD_HIDE_PAUSED;
                 break;
             case 'S': //don't hide on pause (default)
-                mpdrpd_flags ^= MPDRPD_HIDE_PAUSED;
+                mpdrpd_flags &= ~(MPDRPD_HIDE_PAUSED);
                 break;
             case 'l': // log level
                 mpdrpd_set_log_level(atoi(optarg));
