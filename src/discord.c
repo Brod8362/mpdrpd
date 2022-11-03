@@ -5,11 +5,12 @@
 #include <string.h>
 #include "configuration.h"
 
-void ellipse_copy(char* dest, const char* src, size_t output_size) {
+static void ellipse_copy(char* dest, const char* src, size_t output_size) {
     if (strlen(src) >= output_size) {
         memcpy(dest, src, output_size-4);
-        strncpy(dest+output_size-4, "...", 4);
+        strcat(dest, "...");
     } else {
+        memset(dest, 0, output_size);
         strncpy(dest, src, output_size);
     }
 }
