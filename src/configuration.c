@@ -25,6 +25,12 @@ static const struct key_flag_pair config_pairs[] = {
 };
 
 
+/**
+ * @brief Detemrines if a string consists of only whitespace characters
+ * 
+ * @param c String to check
+ * @return 1 if string is made of only whitespace, 0 otherwise
+ */
 static int is_empty(const char* c) {
 	for (size_t i = 0; i < strlen(c); i++) {
 		if (!isspace(c[i])) {
@@ -34,6 +40,13 @@ static int is_empty(const char* c) {
 	return 1;
 }
 
+/**
+ * @brief "Strip" a string.
+ * This returns a pointer to the first non-whitespace character, and will insert a null after the last non-whitespace character.
+ * 
+ * @param src String to strip. This WILL be modified.
+ * @return char* Pointer to the new substring.
+ */
 static char* string_strip(char* src) {
 	const size_t length = strlen(src);
 	size_t beginning = 0, end = length-1;
@@ -43,6 +56,15 @@ static char* string_strip(char* src) {
 	return src+beginning;
 }
 
+/**
+ * @brief Given a line like `key=value`, set *key = "key" and *value = "value".
+ * These pointers are slices of the original string.
+ * 
+ * @param src Source string to split
+ * @param key Pointer to a char*, which will hold the key slice
+ * @param value Pointer to a char*, which will hodl the value slice
+ * @return int 0 on success, -1 on error (couldn't split)
+ */
 static int split_key_value(char* src, char** key, char** value) {
 	size_t src_length = strlen(src);
 	for (size_t i = 0; i < src_length; i++) {
@@ -58,6 +80,13 @@ static int split_key_value(char* src, char** key, char** value) {
 	return -1;
 }
 
+/**
+ * @brief Parse the config file 
+ * 
+ * @param fd File descriptor open in read text mode
+ * @param flags Pointer to flags which will be set from the config file
+ * @return 0 on success, -1 on error
+ */
 int parse_config(FILE* fd, uint32_t* flags) {
 	char* line_buffer = NULL;
 	size_t buffer_size = 0;
