@@ -1,0 +1,11 @@
+[Unit]
+Description=MPD rich presence daemon
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=10
+ExecStart=/usr/local/bin/mpdrpd
+
+[Install]
+WantedBy=multi-user.target

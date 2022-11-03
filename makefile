@@ -8,4 +8,8 @@ mpdrpd: src/mpdrpd.c src/discord.c src/log.c
 clean:
 	rm -f mpdrpd
 
+install:
+	install -D ./mpdrpd /usr/local/bin/mpdrpd
+	install -D -m 644 ./mpdrpd.service /usr/lib/systemd/user/mpdrpd.service
+
 .PHONY: clean
