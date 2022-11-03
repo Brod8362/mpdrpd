@@ -81,10 +81,8 @@ int parse_config(FILE* fd, uint32_t* flags) {
 		if (is_empty(line_buffer)) continue;
 		split_key_value(line_buffer, key_buffer, SUB_BUFFER_SIZE, value_buffer, SUB_BUFFER_SIZE);
 		for (size_t i = 0; i < sizeof(config_pairs)/sizeof(config_pairs[0]); i++) {
-			printf("%s = %s\n", key_buffer, value_buffer);
 			const struct key_flag_pair* kf = &config_pairs[i];
 			if (strcmp(key_buffer, kf->key) == 0) {
-				printf("key match: %s = %s\n", kf->key, value_buffer);
 				if (strcmp(value_buffer, "true") == 0) { //set flag
 					(*flags) |= kf->flag;
 				} else if (strcmp(value_buffer, "false") == 0) { //clear flag
