@@ -12,57 +12,90 @@
 
 #include <getopt.h>
 #include <wordexp.h>
+#include <unistd.h>
+
+#define RETRY_COUNT 5
+#define MPD_CONN_TIMEOUT 10000
 
 struct thread_arg {
-    struct mpd_connection* mpd;
+    const char* host;
+    const int port;
     const uint32_t flags;
 };
 
 void* mpd_thread(void* arg_raw) {
-    
     struct thread_arg* arg = (struct thread_arg*)arg_raw;
 
-    struct mpd_connection* mpd = arg->mpd;
     const uint32_t mpdrpd_flags = arg->flags;
-
-    int error = 0;
-    struct mpd_status* status = NULL;
-    struct mpd_song* song = NULL;
-    mpdrpd_log(LOG_LEVEL_INFO, "entering mpd idle loop");
-    while (mpd_send_idle(mpd) && !error) {
-        enum mpd_idle event = mpd_recv_idle(mpd, 1);
-        mpdrpd_log(LOG_LEVEL_DEBUG, "event received");
+    
+    int retries = 0;
+    while (retries < RETRY_COUNT) {
+        mpdrpd_log(LOG_LEVEL_INFO, "connecting to mpd");
+        // Attempt to connect to mpd. Loop if connection times out or otherwise fails
+        struct mpd_connection* mpd = mpd_connection_new(arg->host, arg->port, MPD_CONN_TIMEOUT);
         
-        if (event != MPD_IDLE_PLAYER) 
+        if (mpd_connection_get_error(mpd) != 0) {
+            retries++;
+            mpdrpd_log(LOG_LEVEL_WARNING, "failed to connect to mpd");
+            sleep(MPD_CONN_TIMEOUT / 1000);
+            mpd_connection_free(mpd);
             continue;
-
-        status = mpd_run_status(mpd);
-        if (status == NULL) {
-            mpdrpd_log(LOG_LEVEL_ERROR, "failed to get status in event loop");
-            error = 1;
-            return NULL;
         }
-        song = mpd_run_current_song(mpd);
-        if (song == NULL) {
-            mpdrpd_log(LOG_LEVEL_ERROR, "failed to get current song in event loop");
-            error = 1;
+        mpdrpd_log(LOG_LEVEL_INFO, "mpd connection established");
+
+        // Reset retries after success
+        retries = 0;
+        int error = 0;
+        struct mpd_status* status = NULL;
+        struct mpd_song* song = NULL;
+        // Enter main even tloop
+        mpdrpd_log(LOG_LEVEL_INFO, "entering mpd idle loop");
+        while (mpd_send_idle(mpd) && !error) {
+            enum mpd_idle event = mpd_recv_idle(mpd, 1);
+            mpdrpd_log(LOG_LEVEL_DEBUG, "event received");
+            
+            // Ignore events that aren't related to player status
+            if (event != MPD_IDLE_PLAYER) 
+                continue;
+
+            // Retrieve current status
+            status = mpd_run_status(mpd);
+            if (status == NULL) {
+                mpdrpd_log(LOG_LEVEL_ERROR, "failed to get status in event loop");
+                error = 1;
+                return NULL;
+            }
+
+            // Retrieve current song
+            song = mpd_run_current_song(mpd);
+            if (song == NULL) {
+                mpdrpd_log(LOG_LEVEL_ERROR, "failed to get current song in event loop");
+                error = 1;
+                mpd_status_free(status);
+                return NULL;
+            }
+
+            // Retrieve current state (playing, paused, etc)
+            enum mpd_state state = mpd_status_get_state(status);
+
+            // Attempt to update discord presence
+            int update_errcode = mpdrpd_discord_update(status, song, state, mpdrpd_flags);
+            if (update_errcode != 0) {
+                mpdrpd_log(LOG_LEVEL_ERROR, "failed to update presence in event loop");
+                error = 2;
+            }
+            
+            // Cleanup allocated memory
             mpd_status_free(status);
-            return NULL;
+            status = NULL;
+            mpd_song_free(song);
+            song = NULL;
         }
-        enum mpd_state state = mpd_status_get_state(status);
-
-        int update_errcode = mpdrpd_discord_update(status, song, state, mpdrpd_flags);
-        if (update_errcode != 0) {
-            mpdrpd_log(LOG_LEVEL_ERROR, "failed to update presence in event loop");
-            error = 2;
-        }
-        
-        //cleanup allocated memory
-        mpd_status_free(status);
-        status = NULL;
-        mpd_song_free(song);
-        song = NULL;
+        mpd_connection_free(mpd);
+        mpdrpd_log(LOG_LEVEL_WARNING, "mpd connection lost");
     }
+    mpdrpd_log(LOG_LEVEL_ERROR, "max retries exceeded");
+    
     return NULL;
 }
 
@@ -117,14 +150,6 @@ int main(int argc, char** argv) {
                 abort();
         }
     }
-    mpdrpd_log(LOG_LEVEL_INFO, "connecting to mpd");
-    // printf("connecting to mpd @ %s:%d\n", host, port);
-    struct mpd_connection* mpd = mpd_connection_new(host, port, 5000);
-
-    if (mpd == NULL) {
-        mpdrpd_log(LOG_LEVEL_CRITICAL, "failed to connect to mpd");
-        return 1;
-    }
     mpdrpd_log(LOG_LEVEL_INFO, "connected to mpd");
 
     DiscordEventHandlers handlers = {
@@ -140,7 +165,8 @@ int main(int argc, char** argv) {
     mpdrpd_log(LOG_LEVEL_INFO, "discord initialized");
 
     struct thread_arg ta = {
-        .mpd = mpd,
+        .host = host,
+        .port = port,
         .flags = mpdrpd_flags
     };
 
@@ -151,6 +177,5 @@ int main(int argc, char** argv) {
 
     mpdrpd_log(LOG_LEVEL_INFO, "discord shutting down");
     Discord_Shutdown();
-    mpd_connection_free(mpd);
     return 0;
 }  
