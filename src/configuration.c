@@ -34,58 +34,50 @@ static int is_empty(const char* c) {
 	return 1;
 }
 
-static void string_strip(char* src, const size_t length) {
-	size_t effective_length = length == 0 ? strlen(src): length;
-	size_t beginning = 0, end = length;
-	//find first non-space character
-	for (size_t i = 0; i < effective_length; i++) {
-		if (!isspace(src[i])) {
-			beginning = i;
-			break;
-		}
-	}
-	//find end
-	for (size_t i = effective_length-1; i >= beginning; i--) {
-		if (!isspace(src[i])) {
-			end = i;
-			break;
-		}
-	}
-	memmove(src, src+beginning, end-beginning+1);
-	src[end-beginning+1] = 0;
+static char* string_strip(char* src) {
+	const size_t length = strlen(src);
+	size_t beginning = 0, end = length-1;
+	while (isspace(src[beginning]) && beginning < length) beginning++;
+	while (isspace(src[end]) && end > beginning) end--;
+	src[end+1] = 0;
+	return src+beginning;
 }
 
-
-static void split_key_value(const char* src, char* key_buf, size_t key_size, char* value_buf, size_t value_size) {
+static int split_key_value(char* src, char** key, char** value) {
 	size_t src_length = strlen(src);
-	memset(key_buf, 0,key_size);
-	memset(value_buf, 0, value_size);
 	for (size_t i = 0; i < src_length; i++) {
 		if (src[i] == '=') {
-			strncpy(key_buf, src, i);
-			strncpy(value_buf, src+i+1, src_length-i);
-			string_strip(key_buf, 0);
-			string_strip(value_buf, 0);
-			break;
+			src[i] = 0;
+			*key = string_strip(src);
+			*value = string_strip(src+i+1);
+			return 0;
 		}
 	}
+	*key = NULL;
+	*value = NULL;
+	return -1;
 }
 
 int parse_config(FILE* fd, uint32_t* flags) {
 	char* line_buffer = NULL;
 	size_t buffer_size = 0;
-	char key_buffer[SUB_BUFFER_SIZE];
-	char value_buffer[SUB_BUFFER_SIZE];
+	char* key = NULL;
+	char* value = NULL;
 	
 	while (getline(&line_buffer, &buffer_size, fd) > 0) {
 		if (is_empty(line_buffer)) continue;
-		split_key_value(line_buffer, key_buffer, SUB_BUFFER_SIZE, value_buffer, SUB_BUFFER_SIZE);
+		if (split_key_value(line_buffer, &key, &value) != 0) {
+			//failed to parse line
+			mpdrpd_log(LOG_LEVEL_WARNING, "failed to parse config line");
+			continue;
+		}
+		
 		for (size_t i = 0; i < sizeof(config_pairs)/sizeof(config_pairs[0]); i++) {
 			const struct key_flag_pair* kf = &config_pairs[i];
-			if (strcmp(key_buffer, kf->key) == 0) {
-				if (strcmp(value_buffer, "true") == 0) { //set flag
+			if (strcmp(key, kf->key) == 0) {
+				if (strcmp(value, "true") == 0) { //set flag
 					(*flags) |= kf->flag;
-				} else if (strcmp(value_buffer, "false") == 0) { //clear flag
+				} else if ((strcmp(value, "false") == 0)) { //clear flag
 					(*flags) &= ~(kf->flag);
 				} else {
 					mpdrpd_log(LOG_LEVEL_WARNING, "invalid config value");
