@@ -84,6 +84,7 @@ int main(int argc, char** argv) {
 			if (parse_config(fd, &mpdrpd_flags) != 0) {
 				mpdrpd_log(LOG_LEVEL_ERROR, "error parsing config file at");
 			}
+            fclose(fd);
 			break;
 		}
 	}
