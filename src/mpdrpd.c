@@ -33,10 +33,10 @@ void* mpd_thread(void* arg_raw) {
         mpdrpd_log(LOG_LEVEL_INFO, "connecting to mpd");
         // Attempt to connect to mpd. Loop if connection times out or otherwise fails
         struct mpd_connection* mpd = mpd_connection_new(arg->host, arg->port, MPD_CONN_TIMEOUT);
-        
-        if (mpd_connection_get_error(mpd) != 0) {
+        int mpd_conn_res = mpd_connection_get_error(mpd);
+        if (mpd_conn_res != 0) {
             retries++;
-            mpdrpd_log(LOG_LEVEL_WARNING, "failed to connect to mpd");
+            mpdrpd_log(LOG_LEVEL_WARNING, "failed to connect to mpd (e %d)", mpd_conn_res);
             sleep(MPD_CONN_TIMEOUT / 1000);
             mpd_connection_free(mpd);
             continue;
@@ -52,7 +52,7 @@ void* mpd_thread(void* arg_raw) {
         mpdrpd_log(LOG_LEVEL_INFO, "entering mpd idle loop");
         while (mpd_send_idle(mpd) && !error) {
             enum mpd_idle event = mpd_recv_idle(mpd, 1);
-            mpdrpd_log(LOG_LEVEL_DEBUG, "event received");
+            mpdrpd_log(LOG_LEVEL_DEBUG, "event received (%d)", event);
             
             // Ignore events that aren't related to player status
             if (event != MPD_IDLE_PLAYER) 
@@ -110,12 +110,12 @@ int main(int argc, char** argv) {
 			wordfree(&we);
 			return 1;
 		}
-		mpdrpd_log(LOG_LEVEL_DEBUG, "trying config file...");
+		mpdrpd_log(LOG_LEVEL_DEBUG, "trying config file @ %s", file_path);
 		FILE* fd = fopen(we.we_wordv[0], "r");
 		wordfree(&we);
 		if (fd != NULL) {
 			if (parse_config(fd, &mpdrpd_flags) != 0) {
-				mpdrpd_log(LOG_LEVEL_ERROR, "error parsing config file at");
+				mpdrpd_log(LOG_LEVEL_ERROR, "error parsing config file at @ %s", file_path);
 			}
             fclose(fd);
 			break;
@@ -150,7 +150,7 @@ int main(int argc, char** argv) {
                 abort();
         }
     }
-    mpdrpd_log(LOG_LEVEL_INFO, "connected to mpd");
+    mpdrpd_log(LOG_LEVEL_INFO, "using mpd @ %s:%d", host, port);
 
     DiscordEventHandlers handlers = {
         .disconnected = handle_discord_disconnected,

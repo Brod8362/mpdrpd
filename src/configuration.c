@@ -92,24 +92,27 @@ int parse_config(FILE* fd, uint32_t* flags) {
 	size_t buffer_size = 0;
 	char* key = NULL;
 	char* value = NULL;
+	int line = 0;
 	
 	while (getline(&line_buffer, &buffer_size, fd) > 0) {
+		line++;
 		if (is_empty(line_buffer)) continue;
 		if (split_key_value(line_buffer, &key, &value) != 0) {
 			//failed to parse line
-			mpdrpd_log(LOG_LEVEL_WARNING, "failed to parse config line");
+			mpdrpd_log(LOG_LEVEL_WARNING, "failed to parse config line %d", line);
 			continue;
 		}
-		
+		mpdrpd_log(LOG_LEVEL_DEBUG, "config %s : %s", key, value);
+	
 		for (size_t i = 0; i < sizeof(config_pairs)/sizeof(config_pairs[0]); i++) {
-			const struct key_flag_pair* kf = &config_pairs[i];
+			const struct key_flag_pair* kf = &config_pairs[i];		
 			if (strcmp(key, kf->key) == 0) {
 				if (strcmp(value, "true") == 0) { //set flag
 					(*flags) |= kf->flag;
 				} else if ((strcmp(value, "false") == 0)) { //clear flag
 					(*flags) &= ~(kf->flag);
 				} else {
-					mpdrpd_log(LOG_LEVEL_WARNING, "invalid config value");
+					mpdrpd_log(LOG_LEVEL_WARNING, "invalid value '%s'", value);
 				}
 			}
 		}	
