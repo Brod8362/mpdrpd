@@ -7,7 +7,7 @@
 #define LOG_LEVEL_ERROR 3
 #define LOG_LEVEL_CRITICAL 4
 
-void mpdrpd_log(const int level, char* msg);
+void mpdrpd_log(const int level, const char* format, ...);
 
 void mpdrpd_set_log_level(const int level);
 
